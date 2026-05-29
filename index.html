@@ -495,10 +495,10 @@
     <!-- ==================== LOGIC ENGINE ==================== -->
     <script>
         // System variables
-        const TODAY_DATE = new Date("2026-05-29"); // Standard fixed date given in the logs
-        let currentYear = 2026;
-        let currentMonth = 4; // 0-indexed, so 4 is May
-        let selectedDateStr = "2026-06-09"; // Initial selected date matching the screenshot details panel
+        const TODAY_DATE = new Date(); // 시스템 현재 날짜 적용
+        let currentYear = TODAY_DATE.getFullYear();
+        let currentMonth = TODAY_DATE.getMonth();
+        let selectedDateStr = ""; // initApp에서 오늘 날짜로 초기화
         let isAdminMode = false;
 
         // 🏫 교육장 표준 종류 지정
@@ -587,6 +587,7 @@
 
         // Load data on startup
         async function initApp() {
+            selectedDateStr = formatDate(TODAY_DATE);
             populateLocationSelects();
             
             // 1. Load GitHub Config
