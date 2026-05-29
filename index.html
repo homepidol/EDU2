@@ -385,42 +385,22 @@
             </div>
 
             <div class="space-y-4 text-xs text-slate-700">
-                <!-- 1. 부서별 신청 요약 -->
+                <!-- 일자별 신청 현황 요약 -->
                 <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm">
                     <h4 class="font-extrabold text-slate-800 text-[12px] mb-2 border-b pb-1.5 flex items-center gap-1.5">
-                        <i class="fa-solid fa-users-rectangle text-indigo-600"></i> 부서별 신청 인원 요약
+                        <i class="fa-solid fa-calendar-days text-indigo-600"></i> 일자별 교육 신청 및 배정 현황
                     </h4>
-                    <div class="max-h-[140px] overflow-y-auto pr-1">
+                    <div class="max-h-[300px] overflow-y-auto pr-1">
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
                                 <tr>
-                                    <th class="px-4 py-1.5">부서명</th>
-                                    <th class="px-4 py-1.5">담당자</th>
-                                    <th class="px-4 py-1.5 text-right">총 인원</th>
+                                    <th class="px-4 py-1.5 w-1/4">일자 (요일)</th>
+                                    <th class="px-4 py-1.5 w-1/4">신청 부서 (과)</th>
+                                    <th class="px-4 py-1.5 w-1/6 text-right">신청 인원</th>
+                                    <th class="px-4 py-1.5">교육 정보 (강의장)</th>
                                 </tr>
                             </thead>
-                            <tbody id="weekly-report-dept-body" class="divide-y divide-slate-150 text-[11.5px]">
-                                <!-- JS generated -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 2. 강의장별 배정 요약 -->
-                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm">
-                    <h4 class="font-extrabold text-slate-800 text-[12px] mb-2 border-b pb-1.5 flex items-center gap-1.5">
-                        <i class="fa-solid fa-location-dot text-indigo-600"></i> 강의장별 배정 인원 요약
-                    </h4>
-                    <div class="max-h-[140px] overflow-y-auto pr-1">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
-                                <tr>
-                                    <th class="px-4 py-1.5">강의장</th>
-                                    <th class="px-4 py-1.5">교육 건수</th>
-                                    <th class="px-4 py-1.5 text-right">총 이용 인원</th>
-                                </tr>
-                            </thead>
-                            <tbody id="weekly-report-loc-body" class="divide-y divide-slate-150 text-[11.5px]">
+                            <tbody id="weekly-report-table-body" class="divide-y divide-slate-150 text-[11.5px]">
                                 <!-- JS generated -->
                             </tbody>
                         </table>
@@ -428,9 +408,12 @@
                 </div>
             </div>
             
-            <div class="mt-5">
-                <button onclick="closeModal('modal-weekly-report')" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-black text-sm transition shadow-md">
-                    확인 및 닫기
+            <div class="mt-5 flex gap-2">
+                <button onclick="copyWeeklyReportText()" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-sm transition shadow-md flex items-center justify-center gap-1.5 hover-scale">
+                    <i class="fa-solid fa-copy"></i> 요약 텍스트 복사
+                </button>
+                <button onclick="closeModal('modal-weekly-report')" class="w-1/2 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-black text-sm transition shadow-md hover-scale">
+                    닫기
                 </button>
             </div>
         </div>
@@ -1966,71 +1949,134 @@
             document.getElementById("weekly-report-title").innerText = `${year}년 ${weekNum}주차 주간 요약 보고서`;
             document.getElementById("weekly-report-range").innerText = `${startStr} ~ ${endStr}`;
             
-            const weeklyEvents = events.filter(e => {
-                const eStart = new Date(e.startDate);
-                const eEnd = new Date(e.endDate);
-                eStart.setHours(0,0,0,0);
-                eEnd.setHours(23,59,59,999);
-                return eStart <= range.sunday && eEnd >= range.monday;
-            });
+            // 월요일부터 일요일까지 7일간의 날짜 배열 생성
+            const daysOfWeek = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(range.monday);
+                d.setDate(range.monday.getDate() + i);
+                daysOfWeek.push(d);
+            }
             
-            const deptSummary = {};
-            const locSummary = {};
+            const tableBody = document.getElementById("weekly-report-table-body");
+            tableBody.innerHTML = "";
             
-            weeklyEvents.forEach(e => {
-                const locationName = e.location || "미지정";
-                if (!locSummary[locationName]) {
-                    locSummary[locationName] = { count: 0, eventsCount: 0 };
-                }
-                locSummary[locationName].eventsCount += 1;
+            let totalEventsInWeek = 0;
+            let lastRenderedDate = "";
+            
+            daysOfWeek.forEach(day => {
+                const dateStr = formatDate(day);
+                const dayOfWeekNames = ["일", "월", "화", "수", "목", "금", "토"];
+                const dayLabel = `${day.getMonth() + 1}월 ${day.getDate()}일 (${dayOfWeekNames[day.getDay()]})`;
                 
-                e.departments.forEach(d => {
-                    const deptName = d.dept || "기타";
-                    if (!deptSummary[deptName]) {
-                        deptSummary[deptName] = { count: 0, manager: d.manager };
-                    }
-                    deptSummary[deptName].count += d.count;
-                    locSummary[locationName].count += d.count;
-                });
+                // 해당 날짜에 걸쳐 있는 이벤트 필터링
+                const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
+                
+                if (dayEvents.length > 0) {
+                    dayEvents.forEach(e => {
+                        totalEventsInWeek++;
+                        
+                        if (e.departments && e.departments.length > 0) {
+                            e.departments.forEach(d => {
+                                const row = document.createElement("tr");
+                                row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                                
+                                const displayDate = (lastRenderedDate === dateStr) ? "" : dayLabel;
+                                lastRenderedDate = dateStr;
+                                
+                                row.innerHTML = `
+                                    <td class="px-4 py-2.5 font-mono font-bold text-slate-800 whitespace-nowrap text-[12px]">${displayDate}</td>
+                                    <td class="px-4 py-2.5 font-bold text-slate-700 text-xs">${d.dept}</td>
+                                    <td class="px-4 py-2.5 font-bold text-slate-900 text-xs text-right whitespace-nowrap">${d.count}명.</td>
+                                    <td class="px-4 py-2.5 font-bold text-indigo-600 text-xs">${e.location || '미지정'}</td>
+                                `;
+                                tableBody.appendChild(row);
+                            });
+                        } else {
+                            const row = document.createElement("tr");
+                            row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                            
+                            const displayDate = (lastRenderedDate === dateStr) ? "" : dayLabel;
+                            lastRenderedDate = dateStr;
+                            
+                            row.innerHTML = `
+                                <td class="px-4 py-2.5 font-mono font-bold text-slate-800 whitespace-nowrap text-[12px]">${displayDate}</td>
+                                <td class="px-4 py-2.5 text-slate-400 italic text-xs">신청 부서 없음</td>
+                                <td class="px-4 py-2.5 text-slate-400 text-xs text-right whitespace-nowrap">0명.</td>
+                                <td class="px-4 py-2.5 font-bold text-indigo-600 text-xs">${e.location || '미지정'}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        }
+                    });
+                }
             });
             
-            // Render Department Summary
-            const deptBody = document.getElementById("weekly-report-dept-body");
-            deptBody.innerHTML = "";
-            const depts = Object.keys(deptSummary);
-            if (depts.length === 0) {
-                deptBody.innerHTML = `<tr><td colspan="3" class="px-4 py-3 text-center text-slate-400 font-bold italic">해당 주간 신청한 부서가 없습니다.</td></tr>`;
-            } else {
-                depts.forEach(d => {
-                    const row = document.createElement("tr");
-                    row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
-                    row.innerHTML = `
-                        <td class="px-4 py-2 font-bold text-slate-800">${d}</td>
-                        <td class="px-4 py-2 text-slate-500 font-semibold">${deptSummary[d].manager || '-'}</td>
-                        <td class="px-4 py-2 text-right font-mono font-black text-indigo-600">${deptSummary[d].count} 명</td>
-                    `;
-                    deptBody.appendChild(row);
-                });
+            if (totalEventsInWeek === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-4 py-8 text-center text-slate-400 font-bold italic">
+                            <i class="fa-solid fa-calendar-xmark text-lg mb-1 block"></i>
+                            해당 주간에는 등록된 교육 일정이 없습니다.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function copyWeeklyReportText() {
+            const range = getWeekRange(formatDate(weeklyReportBaseDate));
+            const startStr = formatDate(range.monday);
+            const endStr = formatDate(range.sunday);
+            const year = range.monday.getFullYear();
+            const weekNum = getISOWeekNumber(range.monday);
+            
+            let text = `[${year}년 ${weekNum}주차 주간 교육 요약 보고서 (${startStr} ~ ${endStr})]\n\n`;
+            
+            const daysOfWeek = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(range.monday);
+                d.setDate(range.monday.getDate() + i);
+                daysOfWeek.push(d);
             }
             
-            // Render Location Summary
-            const locBody = document.getElementById("weekly-report-loc-body");
-            locBody.innerHTML = "";
-            const locs = Object.keys(locSummary);
-            if (locs.length === 0) {
-                locBody.innerHTML = `<tr><td colspan="3" class="px-4 py-3 text-center text-slate-400 font-bold italic">해당 주간에 이용된 강의장이 없습니다.</td></tr>`;
-            } else {
-                locs.forEach(l => {
-                    const row = document.createElement("tr");
-                    row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
-                    row.innerHTML = `
-                        <td class="px-4 py-2 font-bold text-slate-800">${l}</td>
-                        <td class="px-4 py-2 text-slate-500 font-semibold">${locSummary[l].eventsCount} 건</td>
-                        <td class="px-4 py-2 text-right font-mono font-black text-indigo-600">${locSummary[l].count} 명</td>
-                    `;
-                    locBody.appendChild(row);
-                });
+            let hasEvents = false;
+            let lastRenderedDateText = "";
+            
+            daysOfWeek.forEach(day => {
+                const dateStr = formatDate(day);
+                const dayOfWeekNames = ["일", "월", "화", "수", "목", "금", "토"];
+                const dayLabel = `${day.getMonth() + 1}월 ${day.getDate()}일 (${dayOfWeekNames[day.getDay()]})`;
+                
+                const dayEvents = events.filter(e => dateStr >= e.startDate && dateStr <= e.endDate);
+                
+                if (dayEvents.length > 0) {
+                    dayEvents.forEach(e => {
+                        if (e.departments && e.departments.length > 0) {
+                            e.departments.forEach(d => {
+                                hasEvents = true;
+                                const displayDate = (lastRenderedDateText === dateStr) ? " ".repeat(15) : dayLabel.padEnd(15, " ");
+                                lastRenderedDateText = dateStr;
+                                text += `${displayDate} | ${d.dept.padEnd(8, " ")} | ${d.count}명. | ${e.location || '미지정'}\n`;
+                            });
+                        } else {
+                            hasEvents = true;
+                            const displayDate = (lastRenderedDateText === dateStr) ? " ".repeat(15) : dayLabel.padEnd(15, " ");
+                            lastRenderedDateText = dateStr;
+                            text += `${displayDate} | 신청 부서 없음 | 0명. | ${e.location || '미지정'}\n`;
+                        }
+                    });
+                }
+            });
+            
+            if (!hasEvents) {
+                text += "해당 주간에는 등록된 교육 일정이 없습니다.\n";
             }
+            
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("요약 텍스트가 클립보드에 복사되었습니다!");
+            }).catch(err => {
+                console.error("복사 실패:", err);
+                showToast("클립보드 복사에 실패했습니다.");
+            });
         }
 
         window.addEventListener("DOMContentLoaded", initApp);
