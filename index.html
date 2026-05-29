@@ -1114,15 +1114,31 @@
             }
 
             if (matchedEvents.length === 0) {
+                const targetDate = new Date(selectedDateStr);
+                targetDate.setHours(0,0,0,0);
+                const today = new Date(TODAY_DATE);
+                today.setHours(0,0,0,0);
+                const diffTime = targetDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const isApplyClosed = diffDays < 10;
+
                 listContainer.innerHTML = `
                     <div class="text-center py-10 px-4 bg-slate-50/50 border border-dashed border-slate-200 rounded-3xl space-y-3">
                         <div class="text-slate-300 text-3xl"><i class="fa-solid fa-calendar-xmark"></i></div>
                         <p class="text-xs text-slate-400 font-semibold italic">해당 날짜에는 등록된 교육 일정이 없습니다.</p>
-                        ${ !isAdminMode ? `
-                        <button onclick="openApplyModal(null)" class="mx-auto mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md shadow-indigo-100 hover-scale flex items-center gap-1.5">
-                            <i class="fa-solid fa-paper-plane text-[10px]"></i> 이 날짜에 새 교육 신청하기
-                        </button>` : `
-                        <button onclick="openAddScheduleModal()" class="mx-auto mt-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md hover-scale flex items-center gap-1.5">
+                        ${ !isAdminMode ? (
+                            isApplyClosed ? `
+                            <div class="text-center text-[10px] text-rose-600 font-extrabold bg-rose-50 border border-rose-200 py-2 px-3 rounded-xl mt-2 flex items-center justify-center gap-1.5 max-w-xs mx-auto animate-pulse">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                                <span>교육 신청 마감 (개시 10일 전까지만 신청 가능)</span>
+                            </div>
+                            ` : `
+                            <button onclick="openApplyModal(null)" class="mx-auto mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md shadow-indigo-100 hover-scale flex items-center gap-1.5">
+                                <i class="fa-solid fa-paper-plane text-[10px]"></i> 이 날짜에 새 교육 신청하기
+                            </button>
+                            `
+                        ) : `
+                        <button onclick="openAddScheduleModal()" class="mx-auto mt-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-sm hover-scale flex items-center gap-1.5">
                             <i class="fa-solid fa-plus text-[10px]"></i> 교육 일정 등록하기
                         </button>` }
                     </div>
@@ -1352,6 +1368,21 @@
         // --- USER APPLY REQUEST MODAL ---
         function openApplyModal(eventId = null) {
             const evt = eventId ? events.find(e => e.id === eventId) : null;
+            
+            // Check application deadline
+            const refDateStr = evt ? evt.startDate : selectedDateStr;
+            const targetDate = new Date(refDateStr);
+            targetDate.setHours(0,0,0,0);
+            const today = new Date(TODAY_DATE);
+            today.setHours(0,0,0,0);
+            const diffTime = targetDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (!isAdminMode && diffDays < 10) {
+                alert("신청 제한: 교육 개시일로부터 10일 전까지만 신청이 가능합니다.");
+                return;
+            }
+
             const dateDisplay = document.getElementById("apply-date-display");
             const newTrainingSection = document.getElementById("apply-new-training-info");
             const modalHeaderTitle = document.getElementById("apply-modal-header-title");
@@ -1401,7 +1432,7 @@
 
             const eventId = document.getElementById("apply-event-id").value;
             let evt = eventId ? events.find(e => e.id === eventId) : null;
-            const refDateStr = evt ? evt.startDate : selectedDateStr;
+            const refDateStr = evt ? evt.startDate : document.getElementById("apply-new-start").value;
 
             const targetDate = new Date(refDateStr);
             targetDate.setHours(0,0,0,0);
