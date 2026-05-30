@@ -93,17 +93,16 @@
                 </span>
             </div>
 
-            <!-- 🔒 Admin Mode Toggle Switch -->
-            <button id="admin-toggle-btn" onclick="openAdminAuthModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-md flex items-center space-x-2">
-                <i id="admin-lock-icon" class="fa-solid fa-lock text-amber-500 animate-pulse"></i>
-                <span id="admin-toggle-text">관리자 로그인</span>
-            </button>
-
             <!-- 🌐 Switch to External App -->
             <a href="index.html" class="bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white rounded-xl px-3 py-2 text-xs font-semibold transition flex items-center space-x-1.5">
                 <i class="fa-solid fa-industry text-slate-400"></i>
                 <span>L/Dome Cover 관제</span>
             </a>
+
+            <!-- 🔒 Admin Mode Toggle Switch (Icon only, 맨 오른쪽에 배치) -->
+            <button id="admin-toggle-btn" onclick="openAdminAuthModal()" title="관리자 로그인" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl w-9 h-9 flex items-center justify-center transition-all shadow-md shrink-0 hover-scale">
+                <i id="admin-lock-icon" class="fa-solid fa-lock text-amber-500 text-sm"></i>
+            </button>
         </div>
     </header>
 
@@ -193,7 +192,7 @@
                             <i class="fa-solid fa-map-location-dot text-indigo-500"></i>
                             <span>강의장 지도</span>
                         </button>
-                        <div id="details-total-participants" class="bg-indigo-50 text-indigo-700 px-3.5 py-1.5 rounded-xl text-sm font-black border border-indigo-200 shrink-0">
+                        <div id="details-total-participants" class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-5 py-2.5 rounded-2xl text-base font-extrabold shadow-md shrink-0">
                             총 인원: 0명
                         </div>
                     </div>
@@ -219,10 +218,6 @@
 
                     <!-- Bottom Sum & Admin actions -->
                     <div class="pt-3 border-t mt-3 shrink-0 font-bold space-y-2">
-                        <div class="flex justify-between items-center px-4 py-2.5 bg-slate-100 rounded-xl border border-slate-200 font-bold font-sans text-sm">
-                            <span class="text-sm font-extrabold text-slate-700">전체 신청 인원 합계</span>
-                            <span id="details-sum" class="text-base font-black text-slate-900 font-mono">0 명</span>
-                        </div>
                         <div id="admin-add-alternative-block" class="hidden">
                             <button onclick="openAddScheduleModal()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black transition-all shadow-sm hover-scale flex items-center justify-center gap-1.5">
                                 <i class="fa-solid fa-plus text-[10px]"></i> 이 날짜에 다른 강의장 교육 추가
@@ -1198,10 +1193,11 @@
             const matchedEvents = events.filter(e => selectedDateStr >= e.startDate && selectedDateStr <= e.endDate);
             
             const parts = selectedDateStr.split("-");
+            const y = parts[0];
             const m = parseInt(parts[1]);
             const d = parseInt(parts[2]);
             document.getElementById("details-selected-date").innerHTML = `
-                ${m}월 ${d}일 <span class="text-sm font-bold text-slate-400 font-sans">${weekDayStr}</span>
+                ${y}년 ${m}월 ${d}일 <span class="text-sm font-bold text-slate-400 font-sans">${weekDayStr}</span>
             `;
 
             let grandTotalPeople = 0;
@@ -1209,7 +1205,11 @@
                 grandTotalPeople += evt.departments.reduce((sum, dept) => sum + dept.count, 0);
             });
             document.getElementById("details-total-participants").innerText = `총 인원: ${grandTotalPeople}명`;
-            document.getElementById("details-sum").innerText = `${grandTotalPeople} 명`;
+            
+            const detailsSumEl = document.getElementById("details-sum");
+            if (detailsSumEl) {
+                detailsSumEl.innerText = `${grandTotalPeople} 명`;
+            }
 
             const listContainer = document.getElementById("details-list-container");
             listContainer.innerHTML = "";
@@ -1431,7 +1431,6 @@
 
         function updateAdminUI() {
             const btn = document.getElementById("admin-toggle-btn");
-            const txt = document.getElementById("admin-toggle-text");
             const icon = document.getElementById("admin-lock-icon");
             const addSchedBtn = document.getElementById("admin-add-schedule-btn");
             const weeklyReportBtn = document.getElementById("admin-weekly-report-btn");
@@ -1442,9 +1441,9 @@
             const dataSec = document.getElementById("admin-data-section");
 
             if (isAdminMode) {
-                btn.className = "bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 hover:border-emerald-600 text-white rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-md flex items-center space-x-2";
-                txt.innerText = "관리자 로그아웃 (ON)";
-                icon.className = "fa-solid fa-lock-open text-white";
+                btn.className = "bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 hover:border-emerald-600 text-white rounded-xl w-9 h-9 flex items-center justify-center transition-all shadow-md shrink-0 hover-scale";
+                btn.title = "관리자 로그아웃 (ON)";
+                icon.className = "fa-solid fa-lock-open text-white text-sm";
                 addSchedBtn.classList.remove("hidden");
                 if (weeklyReportBtn) weeklyReportBtn.classList.remove("hidden");
 
@@ -1454,9 +1453,9 @@
                 headers.forEach(h => h.classList.remove("hidden"));
                 cells.forEach(c => c.classList.remove("hidden"));
             } else {
-                btn.className = "bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-md flex items-center space-x-2";
-                txt.innerText = "관리자 로그인";
-                icon.className = "fa-solid fa-lock text-amber-500 animate-pulse";
+                btn.className = "bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-200 rounded-xl w-9 h-9 flex items-center justify-center transition-all shadow-md shrink-0 hover-scale";
+                btn.title = "관리자 로그인";
+                icon.className = "fa-solid fa-lock text-amber-500 text-sm";
                 addSchedBtn.classList.add("hidden");
                 if (weeklyReportBtn) weeklyReportBtn.classList.add("hidden");
 
