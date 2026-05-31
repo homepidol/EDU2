@@ -238,6 +238,33 @@
             font-weight: 400 !important;
         }
 
+        #notice-board {
+            background: #FFCCCB !important;
+            color: var(--apple-ink) !important;
+            border: 1px solid var(--apple-hairline) !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+
+        #notice-board-label {
+            color: var(--apple-blue) !important;
+            font-weight: 700 !important;
+            letter-spacing: 0 !important;
+        }
+
+        #notice-board-text {
+            color: var(--apple-ink) !important;
+            font-weight: 700 !important;
+            letter-spacing: 0 !important;
+        }
+
+        #notice-edit-btn {
+            background: var(--apple-blue) !important;
+            border: 1px solid var(--apple-blue) !important;
+            color: #fff !important;
+            border-radius: var(--apple-radius-pill) !important;
+        }
+
         #calendar-tooltip {
             background: rgba(29,29,31,0.96) !important;
             border-color: rgba(255,255,255,0.12) !important;
@@ -284,12 +311,12 @@
         }
         .calendar-day-cell:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+            box-shadow: none !important;
         }
         .selected-day {
-            outline: 3px solid #4f46e5;
-            outline-offset: -3px;
-            background-color: #f5f3ff !important;
+            outline: 2px solid var(--apple-blue) !important;
+            outline-offset: -2px;
+            background-color: #f8fbff !important;
         }
 
         /* Micro-animations */
@@ -399,6 +426,20 @@
             
             <!-- 3.1 LEFT: Calendar Card (lg:col-span-7) -->
             <section class="lg:col-span-7 bg-white rounded-3xl border-2 border-slate-100 shadow-lg overflow-hidden flex flex-col h-full min-h-0">
+                <!-- 📌 Notice Board -->
+                <div id="notice-board" class="w-full px-5 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 border-b border-slate-100">
+                    <div class="flex items-start gap-3 min-w-0">
+                        <span class="mt-0.5 text-base shrink-0 text-indigo-600"><i class="fa-solid fa-bullhorn"></i></span>
+                        <div class="min-w-0">
+                            <div id="notice-board-label" class="text-[11px] uppercase">공지사항</div>
+                            <p id="notice-board-text" class="mt-1 text-sm md:text-base leading-snug break-keep">이번 주 교육 일정과 신청 마감일을 확인해 주세요.</p>
+                        </div>
+                    </div>
+                    <button id="notice-edit-btn" onclick="openNoticeEditor()" class="hidden px-4 py-2 text-xs font-bold transition hover-scale shrink-0 flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                        <span>공지 수정</span>
+                    </button>
+                </div>
                 <!-- Calendar Control Header -->
                 <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
                     <div class="flex items-center space-x-3">
@@ -879,6 +920,31 @@
         </div>
     </div>
 
+    <!-- MODAL 6: Notice Board Editor (Admin only) -->
+    <div id="modal-notice-editor" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border-2 border-slate-200 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative">
+            <button onclick="closeModal('modal-notice-editor')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-900 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="mb-4">
+                <h3 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-bullhorn text-indigo-600"></i>
+                    <span>공지보드 수정</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">달력 위에 표시될 공지 문구를 입력합니다.</p>
+            </div>
+            <textarea id="notice-editor-text" rows="4" maxlength="180" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-slate-900 font-bold focus:outline-none" placeholder="공지사항을 입력하세요."></textarea>
+            <div class="mt-4 flex gap-2">
+                <button type="button" onclick="closeModal('modal-notice-editor')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-xs transition">
+                    취소
+                </button>
+                <button type="button" onclick="saveNoticeBoard()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-xs transition">
+                    저장
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
     <div id="toast-notif" class="hidden fixed bottom-6 right-6 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl z-50 flex items-center space-x-3 transition-all duration-300">
         <div class="bg-white/10 text-emerald-400 p-2 rounded-xl">
@@ -956,6 +1022,8 @@
             updateJSONTextArea();
         }
 
+        const DEFAULT_NOTICE = "이번 주 교육 일정과 신청 마감일을 확인해 주세요.";
+
         // Mock data updated with startDate, endDate, and location
         const DEFAULT_EVENTS = [
             {
@@ -1010,6 +1078,7 @@
         ];
 
         let events = [];
+        let noticeBoard = DEFAULT_NOTICE;
 
         // GitHub Sync Configuration Variables
         let githubConfig = {
@@ -1045,6 +1114,7 @@
                 }
             } else if (!sharedLoaded) {
                 events = [...DEFAULT_EVENTS];
+                noticeBoard = normalizeNoticeBoard(localStorage.getItem("edu_notice_board"));
                 persistLocalDataBackup();
             }
 
@@ -1057,6 +1127,7 @@
             }
 
             updateJSONTextArea();
+            renderNoticeBoard();
             
             document.getElementById("live-today-indicator").innerText = `기준일: ${formatDate(TODAY_DATE)}`;
 
@@ -1201,6 +1272,7 @@
         function getAppDataSnapshot() {
             return {
                 events: events,
+                noticeBoard: noticeBoard,
                 locations: LOCATIONS,
                 departments: DEPARTMENTS,
                 deptManagers: DEPT_MANAGERS
@@ -1222,6 +1294,11 @@
                     .map(([dept, manager]) => [String(dept).trim(), String(manager || "").trim()])
                     .filter(([dept]) => dept)
             );
+        }
+
+        function normalizeNoticeBoard(value) {
+            const text = String(value || "").replace(/\s+/g, " ").trim();
+            return text || DEFAULT_NOTICE;
         }
 
         function normalizeEvent(raw, index) {
@@ -1258,6 +1335,7 @@
 
             return {
                 events: payload.events.map((eventItem, index) => normalizeEvent(eventItem, index)).filter(Boolean),
+                noticeBoard: normalizeNoticeBoard(payload.noticeBoard),
                 locations: normalizeStringArray(payload.locations, LOCATIONS),
                 departments: normalizeStringArray(payload.departments, DEPARTMENTS),
                 deptManagers: normalizeDeptManagers(payload.deptManagers, DEPT_MANAGERS)
@@ -1267,10 +1345,12 @@
         function applyAppData(data, options = {}) {
             const normalized = normalizeSharedAppData(data);
             events = normalized.events;
+            noticeBoard = normalized.noticeBoard;
             LOCATIONS = normalized.locations;
             DEPARTMENTS = normalized.departments;
             DEPT_MANAGERS = normalized.deptManagers;
             populateLocationSelects();
+            renderNoticeBoard();
             if (options.persist !== false) {
                 persistLocalDataBackup();
             }
@@ -1279,6 +1359,7 @@
         function persistLocalDataBackup() {
             localStorage.setItem("edu_events_data", JSON.stringify(events));
             localStorage.setItem("edu_shared_data_backup", JSON.stringify(getAppDataSnapshot()));
+            localStorage.setItem("edu_notice_board", noticeBoard);
             localStorage.setItem("edu_locations", JSON.stringify(LOCATIONS));
             localStorage.setItem("edu_departments", JSON.stringify(DEPARTMENTS));
             localStorage.setItem("edu_dept_managers", JSON.stringify(DEPT_MANAGERS));
@@ -1593,6 +1674,30 @@
             selectDate(formatDate(TODAY_DATE));
         }
 
+        function renderNoticeBoard() {
+            const noticeText = document.getElementById("notice-board-text");
+            if (!noticeText) return;
+            noticeText.textContent = normalizeNoticeBoard(noticeBoard);
+        }
+
+        function openNoticeEditor() {
+            if (!isAdminMode) return;
+            const editor = document.getElementById("notice-editor-text");
+            editor.value = normalizeNoticeBoard(noticeBoard);
+            showModal("modal-notice-editor");
+            setTimeout(() => editor.focus(), 0);
+        }
+
+        function saveNoticeBoard() {
+            if (!isAdminMode) return;
+            const editor = document.getElementById("notice-editor-text");
+            noticeBoard = normalizeNoticeBoard(editor.value);
+            renderNoticeBoard();
+            saveData();
+            closeModal("modal-notice-editor");
+            showToast("공지보드가 수정되었습니다.");
+        }
+
         // --- SELECTED DATE DETAILS PANEL ---
         function renderDetails() {
             const dateObj = new Date(selectedDateStr);
@@ -1826,6 +1931,7 @@
             const icon = document.getElementById("admin-lock-icon");
             const addSchedBtn = document.getElementById("admin-add-schedule-btn");
             const weeklyReportBtn = document.getElementById("admin-weekly-report-btn");
+            const noticeEditBtn = document.getElementById("notice-edit-btn");
             const headers = document.querySelectorAll(".admin-action-header");
             const cells = document.querySelectorAll(".admin-action-cell");
             
@@ -1839,6 +1945,7 @@
                 icon.className = "fa-solid fa-lock-open text-white text-sm";
                 addSchedBtn.classList.remove("hidden");
                 if (weeklyReportBtn) weeklyReportBtn.classList.remove("hidden");
+                if (noticeEditBtn) noticeEditBtn.classList.remove("hidden");
 
                 if (githubSec) githubSec.classList.remove("hidden");
                 if (dataSec) dataSec.classList.remove("hidden");
@@ -1852,6 +1959,7 @@
                 icon.className = "fa-solid fa-lock text-amber-500 text-sm";
                 addSchedBtn.classList.add("hidden");
                 if (weeklyReportBtn) weeklyReportBtn.classList.add("hidden");
+                if (noticeEditBtn) noticeEditBtn.classList.add("hidden");
 
                 if (githubSec) githubSec.classList.add("hidden");
                 if (dataSec) dataSec.classList.add("hidden");
